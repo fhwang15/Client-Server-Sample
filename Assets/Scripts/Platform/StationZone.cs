@@ -41,4 +41,10 @@ public class StationZone : MonoBehaviour
     {
         return _playersInZone;
     }
+
+    public int GetRequiredCount()
+    {
+        return _requiredPlayerCount;
+    }
+
 }

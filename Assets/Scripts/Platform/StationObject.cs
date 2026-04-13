@@ -1,21 +1,29 @@
-using UnityEngine;
 using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
 
 public class StationObject : MonoBehaviour
 {
     [Header("Materials")]
     [SerializeField] private Material _defaultMaterial;
-    [SerializeField] private Material _activatableMaterial;  // 활성화 가능 상태
-    [SerializeField] private Material _lockedMaterial;       // Lock-on 상태
+    [SerializeField] private Material _activatableMaterial;  
+    [SerializeField] private Material _lockedMaterial;       
 
     [Header("연결된 Zone")]
     [SerializeField] private StationZone _zone;
 
-    private bool _isActivatable = false;   // 클릭 가능한 상태인가?
-    private bool _isLockedOn = false;      // 현재 Lock-on 상태인가?
+    private bool _isActivatable = false;   
+    private bool _isLockedOn = false;
 
-    // Lock-on된 플레이어들의 위치를 고정시키기 위해 저장
+    [Header("미니게임 연결")]
+    [SerializeField] private StationTaskSO _task; 
+
+    [Header("UI")]
+    [SerializeField] private GameObject _miniGameUI;   
+    [SerializeField] private TextMeshProUGUI _statusText; 
+
     private Dictionary<GameObject, Vector3> _lockedPositions = new Dictionary<GameObject, Vector3>();
+    private int _lockedOnCount = 0;
 
     private Renderer _renderer;
 
@@ -81,28 +89,62 @@ public class StationObject : MonoBehaviour
     private void LockOn()
     {
         _isLockedOn = true;
-        _waitingForClick = false;
+        _lockedOnCount++;
         SetMaterial(_lockedMaterial);
-        // 커서는 이미 풀려있으니 그대로 유지
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
 
         var players = _zone.GetPlayersInZone();
         _lockedPositions.Clear();
         foreach (var player in players)
             _lockedPositions[player] = player.transform.position;
 
-        Debug.Log("Station Lock-on!");
+        if (_lockedOnCount >= _zone.GetRequiredCount())
+            StartMiniGame();
+
+        Debug.Log($"Lock-on! ({_lockedOnCount}/{_zone.GetRequiredCount()})");
     }
 
     private void Unlock()
     {
         _isLockedOn = false;
+        _lockedOnCount = Mathf.Max(0, _lockedOnCount - 1);
         _lockedPositions.Clear();
         SetMaterial(_isActivatable ? _activatableMaterial : _defaultMaterial);
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
+        // 미니게임 중단
+        StopMiniGame();
+
         Debug.Log("Station Unlocked!");
+    }
+
+    private void StartMiniGame()
+    {
+        if (_miniGameUI != null)
+            _miniGameUI.SetActive(true);
+
+        if (_statusText != null)
+            _statusText.text = _task != null
+                ? $"미니게임 시작!\n{_task.taskName}\n{_task.description}"
+                : "미니게임 시작!";
+
+        Debug.Log("미니게임 시작!");
+        // 나중에 여기에 실제 미니게임 로직 연결
+    }
+
+    private void StopMiniGame()
+    {
+        if (_miniGameUI != null)
+            _miniGameUI.SetActive(false);
+
+        if (_statusText != null)
+            _statusText.text = "";
+
+        Debug.Log("미니게임 중단!");
     }
 
     private void SetMaterial(Material mat)

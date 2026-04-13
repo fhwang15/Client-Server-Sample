@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83577be4ce84947479374f391c0e58ef, type: 3}
+  m_Name: PotionRecipe
+  m_EditorClassIdentifier: Assembly-CSharp::PotionRecipeSO
+  potionName: Exploding Potion
+  potionIcon: {fileID: 0}
+  tasks:
+  - {fileID: 11400000, guid: b8b4c159b500049489fb897e9757f3ca, type: 2}
+  - {fileID: 11400000, guid: 57245a589b7c8714d80e045509f4827b, type: 2}
+  - {fileID: 11400000, guid: 8d0ab8439afdd864ca4655802f891011, type: 2}
+  - {fileID: 11400000, guid: 89dc6b17941b83e458162df03ea6550a, type: 2}

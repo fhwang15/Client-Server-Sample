@@ -18,14 +18,16 @@ public class PlayerController : NetworkBehaviour
     // This label floats above the capsule and shows the player name.
     [SerializeField] private TextMeshPro _nameLabel;
 
-    // Drag the Coin prefab here in the Player prefab Inspector.
-    // The server will instantiate and spawn a copy of this prefab when the player fires.
-    [SerializeField] private GameObject _coinPrefab;
 
     // Static bridge: NetworkManagerUI sets this before the player prefab spawns
     // so the spawned PlayerController can read the local player's chosen name
     // without needing a direct reference to the UI.
     public static string LocalPlayerName = "Player";
+
+    private float horizontalMouse;
+    public float mouseSensitivity;
+    private Quaternion currentRotation;
+
 
     // Eight distinct colors, one per player slot (indexed by OwnerClientId % 8).
     private static readonly Color[] PlayerColors = new Color[]
@@ -67,7 +69,6 @@ public class PlayerController : NetworkBehaviour
     );
 
     private InputAction _moveAction;
-    private InputAction _fireAction;
 
     // Cached reference to this object's CapsuleCollider, used for the pre-move
     // overlap check. Cached once at spawn to avoid calling GetComponent every frame.
@@ -103,6 +104,11 @@ public class PlayerController : NetworkBehaviour
             // 2 units tall, so its center must be 1 unit up to sit flush on the ground.
             transform.position = new Vector3((_playerNumber.Value - 1) * 1f, 1f, 0f);
         }
+
+        currentRotation = gameObject.transform.rotation;
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+
 
         // Subscribe to future color changes so all clients update visuals
         // if the value arrives after OnNetworkSpawn (common on late-joining clients).
@@ -147,17 +153,6 @@ public class PlayerController : NetworkBehaviour
 
         // Actions must be explicitly enabled before they produce input values.
         _moveAction.Enable();
-
-        // The Attack action (left mouse button / gamepad West) spawns a coin.
-        // It reuses an existing action from the Input Actions asset rather than
-        // adding a new one, keeping the asset tidy for this teaching sample.
-        _fireAction = InputSystem.actions.FindAction("Attack");
-        if (_fireAction == null)
-        {
-            Debug.LogError("[PlayerController] Attack action not found!");
-            return;
-        }
-        _fireAction.Enable();
 
         // Tell the camera to follow this player.
         // Camera.main finds the scene camera tagged "MainCamera".
@@ -231,6 +226,15 @@ public class PlayerController : NetworkBehaviour
 
     private void Update()
     {
+
+        // Show and lock the cursor when the player clicks, so they can look around.
+
+        if(Input.GetKeyDown(KeyCode.Escape))
+        {
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+        }
+
         // Only the owning client should move this player.
         // Non-owners receive position updates automatically via NetworkTransform.
         if (!IsOwner)
@@ -247,10 +251,9 @@ public class PlayerController : NetworkBehaviour
         if (GameManager.Instance == null || !GameManager.Instance.GameStarted.Value)
             return;
 
-        // triggered is true for exactly one frame when a button action is performed.
-        // We check _fireAction before movement so a blocked move doesn't prevent firing.
-        if (_fireAction != null && _fireAction.triggered)
-            SpawnCoinServerRpc(transform.position);
+
+        horizontalMouse = Input.GetAxis("Mouse X") * mouseSensitivity;
+        currentRotation.y += horizontalMouse;
 
         // ReadValue<Vector2>() returns the current WASD or stick input this frame:
         // x = horizontal (-1 left, +1 right), y = vertical (-1 back, +1 forward)
@@ -259,6 +262,7 @@ public class PlayerController : NetworkBehaviour
         // Map the 2D input onto the XZ plane (Y=0 keeps the player on the ground).
         // Multiply by speed and Time.deltaTime to make movement frame-rate independent.
         Vector3 move = new Vector3(input.x, 0, input.y) * _moveSpeed * Time.deltaTime;
+        transform.rotation = Quaternion.Euler(0f, currentRotation.y, 0f);
 
         // Before moving, check whether the proposed position would overlap another player.
         // This runs entirely on the owning client — no network round-trip, no latency.
@@ -267,7 +271,14 @@ public class PlayerController : NetworkBehaviour
 
         // Translate moves the transform in world space.
         // NetworkTransform will replicate this position change to all other clients.
-        transform.Translate(move, Space.World);
+        transform.Translate(move, Space.Self);
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
+        }
+
     }
 
     // Returns true if placing this capsule at proposedPosition would overlap
@@ -304,27 +315,7 @@ public class PlayerController : NetworkBehaviour
 
         return false;
     }
-
-    // The owning client sends this RPC to ask the server to spawn a coin.
-    // Spawning always happens on the server — clients never call Spawn() directly.
-    // We accept the position as a parameter because the server cannot reliably read
-    // the client's transform; passing the value explicitly makes the data flow clear.
-    [ServerRpc]
-    private void SpawnCoinServerRpc(Vector3 position)
-    {
-        if (_coinPrefab == null)
-        {
-            Debug.LogError("[PlayerController] Coin Prefab is not assigned on the Player prefab.");
-            return;
-        }
-
-        GameObject coin = Instantiate(_coinPrefab, position, Quaternion.identity);
-
-        // Spawn() registers the object with NGO and replicates it to all clients.
-        // destroyWithScene: true ensures it's cleaned up if the scene is unloaded.
-        coin.GetComponent<NetworkObject>().Spawn(destroyWithScene: true);
-    }
-
+  
     private void LateUpdate()
     {
         // Billboard the label so it always faces the camera regardless of player rotation.

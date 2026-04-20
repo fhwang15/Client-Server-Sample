@@ -15,6 +15,5 @@ MonoBehaviour:
   potionName: Exploding Potion
   potionIcon: {fileID: 0}
   tasks:
-  - {fileID: 11400000, guid: b8b4c159b500049489fb897e9757f3ca, type: 2}
   - {fileID: 11400000, guid: 57245a589b7c8714d80e045509f4827b, type: 2}
   - {fileID: 11400000, guid: 8d0ab8439afdd864ca4655802f891011, type: 2}

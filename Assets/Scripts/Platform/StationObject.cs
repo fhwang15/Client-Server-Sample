@@ -106,7 +106,7 @@ public class StationObject : MonoBehaviour
         Debug.Log($"Lock-on! ({_lockedOnCount}/{_zone.GetRequiredCount()})");
     }
 
-    private void Unlock()
+    public void Unlock()
     {
         _isLockedOn = false;
         _lockedOnCount = Mathf.Max(0, _lockedOnCount - 1);
@@ -125,7 +125,9 @@ public class StationObject : MonoBehaviour
     private void StartMiniGame()
     {
         if (_miniGameUI != null)
+        {
             _miniGameUI.SetActive(true);
+        }
 
         if (_statusText != null)
             _statusText.text = _task != null
@@ -133,7 +135,6 @@ public class StationObject : MonoBehaviour
                 : "미니게임 시작!";
 
         Debug.Log("미니게임 시작!");
-        // 나중에 여기에 실제 미니게임 로직 연결
     }
 
     private void StopMiniGame()
@@ -152,4 +153,14 @@ public class StationObject : MonoBehaviour
         if (_renderer != null && mat != null)
             _renderer.material = mat;
     }
+
+    public void OnMinigameComplete()
+    {
+        // 나중에 Book이 이걸 읽을 거야!
+        if (_task != null)
+            _task.isCompleted = true;
+
+        Debug.Log($"{gameObject.name} 미니게임 완료!");
+    }
+
 }

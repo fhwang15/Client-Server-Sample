@@ -1,6 +1,10 @@
 using System;
-using UnityEngine;
+using TMPro;
 using Unity.Netcode;
+using UnityEngine;
+
+
+
 
 // GameManager handles startup logic — deciding whether this instance runs as a
 // dedicated server or presents the connect UI to the player.
@@ -28,6 +32,37 @@ public class GameManager : NetworkBehaviour
         NetworkVariableWritePermission.Server
     );
 
+    public NetworkVariable<float> TimeRemaining = new NetworkVariable<float>(
+    0f,
+    NetworkVariableReadPermission.Everyone,
+    NetworkVariableWritePermission.Server
+);
+
+    public NetworkVariable<bool> GameOver = new NetworkVariable<bool>(
+    false,
+    NetworkVariableReadPermission.Everyone,
+    NetworkVariableWritePermission.Server
+);
+
+    public NetworkVariable<bool> GameClear = new NetworkVariable<bool>(
+        false,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+    [Header("타이머")]
+    [SerializeField] private float _timeLimit = 30f;
+    private float _timeRemaining;
+    private bool _timerRunning = false;
+
+    [Header("결과 UI")]
+    [SerializeField] private GameObject _gameOverUI;
+    [SerializeField] private GameObject _gameClearUI;
+
+    // 타이머 UI
+    [SerializeField] private TextMeshProUGUI _timerText;
+
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -44,6 +79,12 @@ public class GameManager : NetworkBehaviour
     {
         if (IsServer)
             NetworkManager.OnClientConnectedCallback += OnClientConnected;
+
+        GameStarted.OnValueChanged += OnGameStartedChanged;
+
+        GameOver.OnValueChanged += OnGameOverChanged;
+        GameClear.OnValueChanged += OnGameClearChanged;
+
     }
 
     // Always mirror subscriptions with unsubscriptions to prevent leaks.
@@ -51,6 +92,11 @@ public class GameManager : NetworkBehaviour
     {
         if (IsServer)
             NetworkManager.OnClientConnectedCallback -= OnClientConnected;
+
+        GameStarted.OnValueChanged -= OnGameStartedChanged;
+        GameOver.OnValueChanged -= OnGameOverChanged;
+        GameClear.OnValueChanged -= OnGameClearChanged;
+
     }
 
     // Fires on the server each time a new client (including the host) connects.
@@ -113,5 +159,78 @@ public class GameManager : NetworkBehaviour
         // We check for null in case the scene was never fully initialized.
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
             NetworkManager.Singleton.Shutdown();
+    }
+
+
+    public void StartTimer()
+    {
+        if (!IsServer) return; // 서버만 시작 가능!
+        TimeRemaining.Value = _timeLimit;
+        _timerRunning = true;
+    }
+
+    private void OnGameStartedChanged(bool previous, bool current)
+    {
+        if (current == true)
+            StartTimer();
+    }
+
+    private void Update()
+    {
+        // 타이머 감소는 서버만!
+        if (IsServer && _timerRunning)
+        {
+            TimeRemaining.Value -= Time.deltaTime;
+            TimeRemaining.Value = Mathf.Max(0f, TimeRemaining.Value);
+
+            if (TimeRemaining.Value <= 0f)
+            {
+                _timerRunning = false;
+                OnTimeOut();
+            }
+        }
+
+        // UI 업데이트는 모든 클라이언트가 NetworkVariable 읽어서 표시
+        if (_timerText != null)
+            _timerText.text = $"{TimeRemaining.Value:F1} sec";
+    }
+
+    private void OnTimeOut()
+    {
+        if (!IsServer) return;
+        GameOver.Value = true;
+    }
+
+    public void StopTimer()
+    {
+        if (!IsServer) return;
+        _timerRunning = false;
+        GameClear.Value = true;
+    }
+
+    private void OnGameOverChanged(bool previous, bool current)
+    {
+        if (current == true)
+            ShowGameOver();
+    }
+
+    private void OnGameClearChanged(bool previous, bool current)
+    {
+        if (current == true)
+            ShowGameClear();
+    }
+
+    private void ShowGameOver()
+    {
+        if (_gameOverUI != null)
+            _gameOverUI.SetActive(true);
+        Debug.Log("게임 오버!");
+    }
+
+    private void ShowGameClear()
+    {
+        if (_gameClearUI != null)
+            _gameClearUI.SetActive(true);
+        Debug.Log("게임 클리어!");
     }
 }

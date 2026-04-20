@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StationTaskSO
   taskName: Start Fire
   description: Starting the fire for pot
-  requiredPlayerCount: 2
+  requiredPlayerCount: 1
   isCompleted: 0

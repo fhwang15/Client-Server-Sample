@@ -16,3 +16,8 @@ MonoBehaviour:
   description: Stirring the things in water.
   requiredPlayerCount: 1
   isCompleted: 0
+  stirSteps:
+  - direction: 0
+    rotations: 2
+  - direction: 1
+    rotations: 1
